@@ -92,6 +92,40 @@ app.get('/profile', requireAuth, (req, res) => {
 });
 
 
+// 4. Logout Endpoint
+app.post('/logout', requireAuth, async (req, res) => {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+        return res.status(400).json({ error: error.message });
+    }
+
+    res.status(200).json({ message: 'Logged out successfully' });
+});
+
+
+// 5. Refresh Token Endpoint
+app.post('/refresh', async (req, res) => {
+    const { refresh_token } = req.body;
+
+    if (!refresh_token) {
+        return res.status(400).json({ error: 'Refresh token is required' });
+    }
+
+    const { data, error } = await supabase.auth.refreshSession({ refresh_token });
+
+    if (error) {
+        return res.status(401).json({ error: 'Invalid or expired refresh token' });
+    }
+
+    res.status(200).json({
+        message: 'Token refreshed successfully',
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+    });
+});
+
+
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
