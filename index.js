@@ -9,6 +9,26 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+
+const requireAuth = async (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'Access denied. No token provided.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+        return res.status(401).json({ error: 'Invalid or expired token.' });
+    }
+
+    req.user = user;
+    next();
+};
+
+
 // 1. Sign Up Endpoint
 app.post('/signup', async (req, res) => {
     const { email, password } = req.body;
@@ -56,6 +76,21 @@ app.post('/login', async (req, res) => {
         user: data.user,
     });
 });
+
+
+// Protected Profile Endpoint
+app.get('/profile', requireAuth, (req, res) => {
+    res.status(200).json({
+        message: 'Welcome to your protected profile!',
+        user: {
+            id: req.user.id,
+            email: req.user.email,
+            role: req.user.role,
+            last_sign_in_at: req.user.last_sign_in_at,
+        },
+    });
+});
+
 
 const PORT = process.env.PORT || 3000;
 
