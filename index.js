@@ -29,8 +29,14 @@ const requireAuth = async (req, res, next) => {
 };
 
 
+// Public Endpoint
+app.get('/public/info', (req, res) => {
+    res.status(200).json({ message: "Welcome stranger! This info is public." });
+});
+
+
 // 1. Sign Up Endpoint
-app.post('/signup', async (req, res) => {
+app.post('/auth/signup', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -53,7 +59,7 @@ app.post('/signup', async (req, res) => {
 });
 
 // 2. Log In Endpoint
-app.post('/login', async (req, res) => {
+app.post('/auth/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -66,8 +72,8 @@ app.post('/login', async (req, res) => {
     });
 
     if (error) {
-        return res.status(400).json({ error: error.message });
-    }
+    return res.status(401).json({ error: 'Invalid login credentials' });
+}
 
     res.status(200).json({
         message: 'Login successful',
@@ -79,7 +85,7 @@ app.post('/login', async (req, res) => {
 
 
 // Protected Profile Endpoint
-app.get('/profile', requireAuth, (req, res) => {
+app.get('/protected/profile', requireAuth, (req, res) => {
     res.status(200).json({
         message: 'Welcome to your protected profile!',
         user: {
@@ -92,20 +98,28 @@ app.get('/profile', requireAuth, (req, res) => {
 });
 
 
+// Protected Dashboard Endpoint
+app.get('/protected/dashboard', requireAuth, (req, res) => {
+    res.status(200).json({
+        message: 'Welcome to the protected dashboard!',
+        user_id: req.user.id,
+    });
+});
+
 // 4. Logout Endpoint
-app.post('/logout', requireAuth, async (req, res) => {
+app.post('/auth/logout', requireAuth, async (req, res) => {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
         return res.status(400).json({ error: error.message });
     }
 
-    res.status(200).json({ message: 'Logged out successfully' });
+    res.status(204).send();
 });
 
 
 // 5. Refresh Token Endpoint
-app.post('/refresh', async (req, res) => {
+app.post('/auth/refresh', async (req, res) => {
     const { refresh_token } = req.body;
 
     if (!refresh_token) {
@@ -131,3 +145,10 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running and connected to Supabase on port ${PORT}`);
 });
+
+
+const swaggerUi = require('swagger-ui-express');
+const swaggerDocument = require('./swagger.json');
+
+// Serve Swagger UI on /docs
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
